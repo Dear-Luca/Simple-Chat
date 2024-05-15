@@ -1,4 +1,4 @@
-from socket import AF_INET, socket, SOCK_STREAM
+from socket import AF_INET, socket, SOCK_STREAM, SO_REUSEADDR, SOL_SOCKET
 from threading import Thread
 
 HOST = "localhost"
@@ -9,6 +9,7 @@ users = {}
 server_socket = socket(AF_INET, SOCK_STREAM)
 #bind the socket to the server address
 server_socket.bind((HOST, PORT))
+server_socket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
 
 def accept_client_connection():
     while True:
@@ -19,10 +20,6 @@ def accept_client_connection():
         #start a new Thread to manage each client 
         manage_client_thread = Thread(target=manage_client, args=(connection_socket, ))
         manage_client_thread.start()
-
-def ask_username(connection_socket):
-    connection_socket.send("There is already a user with this name".encode())
-    connection_socket.send("Type another username".encode())
 
 def manage_client(connection_socket):
     connection_socket.send("Hi! type your username and then Enter".encode())
@@ -47,6 +44,10 @@ def manage_client(connection_socket):
             break
         else:
             broadcast(user_name + ": "+ message)
+
+def ask_username(connection_socket):
+    connection_socket.send("There is already a user with this name".encode())
+    connection_socket.send("Type another username".encode())
 
 def broadcast(message):
     for user in users:
