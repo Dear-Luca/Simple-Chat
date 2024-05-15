@@ -1,4 +1,4 @@
-from socket import AF_INET, socket, SOCK_STREAM, SO_REUSEADDR, SOL_SOCKET
+from socket import AF_INET, socket, SOCK_STREAM, SO_REUSEPORT, SOL_SOCKET
 from threading import Thread
 
 HOST = "localhost"
@@ -9,7 +9,7 @@ users = {}
 server_socket = socket(AF_INET, SOCK_STREAM)
 #bind the socket to the server address
 server_socket.bind((HOST, PORT))
-server_socket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+server_socket.setsockopt(SOL_SOCKET, SO_REUSEPORT, 1)
 
 def accept_client_connection():
     while True:
