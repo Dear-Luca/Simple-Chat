@@ -4,6 +4,7 @@ import tkinter
 
 BUFFER = 1024
 
+
 def receive(socket, message_list):
     while True:
         try:
@@ -45,7 +46,8 @@ def main():
     frame.pack()
     entry_field = tkinter.Entry(window, textvariable=message)
     entry_field.pack()
-    entry_field.bind("<Return>", lambda event: send(message, client_socket, window))
+    entry_field.bind("<Return>", lambda event: send(
+        message, client_socket, window))
     send_button = tkinter.Button(
         window, text="Enter", command=lambda: send(message, client_socket, window))
     send_button.pack()
