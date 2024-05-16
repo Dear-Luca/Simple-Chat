@@ -1,9 +1,9 @@
-from socket import AF_INET, socket, SOCK_STREAM, SOL_SOCKET, SO_REUSEADDR
+from socket import *
 from threading import Thread
 import sys
 import signal
 
-HOST = 'localhost'
+HOST = "localhost"
 PORT = 8080
 BUFFER = 1024
 addresses = {}
@@ -54,7 +54,7 @@ def manage_client(connection_socket):
                 break
             else:
                 broadcast(user_name + ": " + message)
-        except (ConnectionResetError, BrokenPipeError, ConnectionResetError):
+        except (ConnectionResetError, BrokenPipeError):
             connection_socket.close()
             del users[connection_socket]
             print(addresses[connection_socket], " disconnected")

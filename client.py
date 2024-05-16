@@ -1,7 +1,11 @@
 from socket import AF_INET, socket, SOCK_STREAM
-from threading import Thread
+from threading import Thread, Timer
 import tkinter
-import sys, signal
+import sys
+import signal
+import subprocess
+import platform
+
 
 BUFFER = 1024
 
@@ -20,8 +24,9 @@ def receive(socket, message_list):
 def send(message, socket, window):
     msg = message.get()
     message.set("")
-    if msg: 
+    if msg:
         socket.send(msg.encode())
+
     if msg == "quit":
         socket.close()
         window.quit()
@@ -38,6 +43,23 @@ def signal_handler(signal, frame, message, socket, window):
     print("\nProgram terminated.")
     close(message, socket, window)
     sys.exit(0)
+
+
+def ping_ip(HOST, PORT, client_socket, window):
+    Timer(5.0, ping_ip, args=(HOST, PORT, client_socket, window)).start()
+    param = '-n' if platform.system().lower() == 'windows' else '-c'
+    command = ['ping', param, '1', HOST]
+    result = subprocess.run(command, stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE, text=True)
+
+    if result.returncode == 0:
+        print("Ping to" + HOST + "was successful")
+    else:
+        print("Ping to" + HOST + "failed")
+        client_socket.close()
+        window.quit()
+        sys.exit()
+
 
 def main():
     PORT = 8080
@@ -71,14 +93,19 @@ def main():
     try:
         client_socket = socket(AF_INET, SOCK_STREAM)
         client_socket.connect((HOST, PORT))
-        signal.signal(signal.SIGINT, lambda sig, frame: signal_handler(sig, frame, message, client_socket, window))
+        signal.signal(signal.SIGINT, lambda sig, frame: signal_handler(
+            sig, frame, message, client_socket, window))
         receive_thread = Thread(
             target=receive, args=(client_socket, message_list), daemon=True)
-
+        ping_thread = Timer(5.0, ping_ip, args=(
+            HOST, PORT, client_socket, window))
+        ping_thread.daemon = True
+        ping_thread.start()
         receive_thread.start()
         tkinter.mainloop()
 
         receive_thread.join()
+
         client_socket.close()
     except ConnectionRefusedError:
         print("Connections refused")
