@@ -1,6 +1,7 @@
 from socket import AF_INET, socket, SOCK_STREAM
 from threading import Thread
 import tkinter
+import sys, signal
 
 BUFFER = 1024
 
@@ -9,6 +10,8 @@ def receive(socket, message_list):
     while True:
         try:
             msg = socket.recv(BUFFER).decode()
+            if not msg:
+                break
             message_list.insert(tkinter.END, msg)
         except OSError:
             break
@@ -17,7 +20,8 @@ def receive(socket, message_list):
 def send(message, socket, window):
     msg = message.get()
     message.set("")
-    socket.send(msg.encode())
+    if msg: 
+        socket.send(msg.encode())
     if msg == "quit":
         socket.close()
         window.quit()
@@ -26,11 +30,21 @@ def send(message, socket, window):
 def close(message, socket, window):
     message.set("quit")
     send(message, socket, window)
+    socket.close()
+    window.quit()
 
+
+def signal_handler(signal, frame, message, socket, window):
+    print("\nProgram terminated.")
+    close(message, socket, window)
+    sys.exit(0)
 
 def main():
     PORT = 8080
-    HOST = input("Type the address of the server: ")
+    try:
+        HOST = input("Type the address of the server: ")
+    except KeyboardInterrupt:
+        sys.exit(0)
 
     window = tkinter.Tk()
     window.title("MyChat")
@@ -57,9 +71,9 @@ def main():
     try:
         client_socket = socket(AF_INET, SOCK_STREAM)
         client_socket.connect((HOST, PORT))
-
+        signal.signal(signal.SIGINT, lambda sig, frame: signal_handler(sig, frame, message, client_socket, window))
         receive_thread = Thread(
-            target=receive, args=(client_socket, message_list))
+            target=receive, args=(client_socket, message_list), daemon=True)
 
         receive_thread.start()
         tkinter.mainloop()
@@ -70,6 +84,7 @@ def main():
         print("Connections refused")
     except KeyboardInterrupt:
         print("\nProgram terminated.")
+        client_socket.close()
 
 
 if __name__ == "__main__":

@@ -1,27 +1,35 @@
-from socket import AF_INET, socket, SOCK_STREAM, SO_REUSEPORT, SOL_SOCKET
+from socket import AF_INET, socket, SOCK_STREAM, SOL_SOCKET, SO_REUSEADDR
 from threading import Thread
+import sys
+import signal
 
-HOST = "localhost"
+HOST = 'localhost'
 PORT = 8080
 BUFFER = 1024
 addresses = {}
 users = {}
 server_socket = socket(AF_INET, SOCK_STREAM)
+server_socket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
 # bind the socket to the server address
 server_socket.bind((HOST, PORT))
-server_socket.setsockopt(SOL_SOCKET, SO_REUSEPORT, 1)
+
+accepting_connections = True
 
 
 def accept_client_connection():
-    while True:
-        connection_socket, client_address = server_socket.accept()
-        print("Connection occured:", client_address)
-        # associate the corrispondent client with each socket
-        addresses[connection_socket] = client_address
-        # start a new Thread to manage each client
-        manage_client_thread = Thread(
-            target=manage_client, args=(connection_socket, ))
-        manage_client_thread.start()
+    global accepting_connections
+    while accepting_connections:
+        try:
+            connection_socket, client_address = server_socket.accept()
+            print("Connection occured:", client_address)
+            # associate the corrispondent client with each socket
+            addresses[connection_socket] = client_address
+            # start a new Thread to manage each client
+            manage_client_thread = Thread(
+                target=manage_client, args=(connection_socket, ), daemon=True)
+            manage_client_thread.start()
+        except OSError:
+            break
 
 
 def manage_client(connection_socket):
@@ -39,19 +47,33 @@ def manage_client(connection_socket):
 
     # wait for other messages
     while True:
-        message = connection_socket.recv(BUFFER).decode()
-        if message == "quit":
+        try:
+            message = connection_socket.recv(BUFFER).decode()
+            if message == "quit":
+                quit_user(connection_socket, user_name)
+                break
+            else:
+                broadcast(user_name + ": " + message)
+        except (ConnectionResetError, BrokenPipeError, ConnectionResetError):
             connection_socket.close()
             del users[connection_socket]
+            print(addresses[connection_socket], " disconnected")
+            print(user_name)
             broadcast(user_name + " left the chat.")
             break
-        else:
-            broadcast(user_name + ": " + message)
+
+
+def quit_user(socket, user_name):
+    socket.close()
+    del users[socket]
+    print(addresses[socket], " disconnected")
+    print(user_name)
+    broadcast(user_name + " left the chat.")
 
 
 def ask_username(connection_socket):
-    connection_socket.send("There is already a user with this name".encode())
-    connection_socket.send("Type another username".encode())
+    connection_socket.send(
+        "There is already a user with this name, type another username".encode())
 
 
 def broadcast(message):
@@ -59,13 +81,24 @@ def broadcast(message):
         user.send(message.encode())
 
 
+def quit_server(signal, frame):
+    global accepting_connections
+    print("Exiting server...")
+    accepting_connections = False
+    server_socket.close()
+    sys.exit(0)
+
+
 if __name__ == "__main__":
+    signal.signal(signal.SIGINT, quit_server)
+
     server_socket.listen(5)
     print("The server is up on port: ", PORT)
     print("Waiting for connections")
     # start a thread to accepting each client connection
-    accept_thread = Thread(target=accept_client_connection)
+    accept_thread = Thread(target=accept_client_connection, daemon=True)
     accept_thread.start()
+
     # Wait until the thread terminates.
     accept_thread.join()
     server_socket.close()
