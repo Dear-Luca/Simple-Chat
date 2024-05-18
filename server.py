@@ -55,11 +55,7 @@ def manage_client(connection_socket):
             else:
                 broadcast(user_name + ": " + message)
         except (ConnectionResetError, BrokenPipeError):
-            connection_socket.close()
-            del users[connection_socket]
-            print(addresses[connection_socket], " disconnected")
-            print(user_name)
-            broadcast(user_name + " left the chat.")
+            quit_user(connection_socket, user_name)
             break
 
 
@@ -85,6 +81,7 @@ def quit_server(signal, frame):
     global accepting_connections
     print("Exiting server...")
     accepting_connections = False
+    broadcast("SHUTDOWN")
     server_socket.close()
     sys.exit(0)
 

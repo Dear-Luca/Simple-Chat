@@ -10,12 +10,15 @@ import platform
 BUFFER = 1024
 
 
-def receive(socket, message_list):
+def receive(socket, message_list, window):
     while True:
         try:
             msg = socket.recv(BUFFER).decode()
             if not msg:
                 break
+            if msg == "SHUTDOWN":
+                socket.close()
+                window.quit()
             message_list.insert(tkinter.END, msg)
         except OSError:
             break
@@ -30,6 +33,8 @@ def send(message, socket, window):
     if msg == "quit":
         socket.close()
         window.quit()
+    
+
 
 
 def close(message, socket, window):
@@ -53,9 +58,9 @@ def ping_ip(HOST, PORT, client_socket, window):
                             stderr=subprocess.PIPE, text=True)
 
     if result.returncode == 0:
-        print("Ping to" + HOST + "was successful")
+        print("Ping to " + HOST + " was successful")
     else:
-        print("Ping to" + HOST + "failed")
+        print("Ping to " + HOST + " failed")
         client_socket.close()
         window.quit()
         sys.exit()
@@ -96,7 +101,7 @@ def main():
         signal.signal(signal.SIGINT, lambda sig, frame: signal_handler(
             sig, frame, message, client_socket, window))
         receive_thread = Thread(
-            target=receive, args=(client_socket, message_list), daemon=True)
+            target=receive, args=(client_socket, message_list, window), daemon=True)
         ping_thread = Timer(5.0, ping_ip, args=(
             HOST, PORT, client_socket, window))
         ping_thread.daemon = True
