@@ -6,16 +6,17 @@ import signal
 import subprocess
 import platform
 
-
 BUFFER = 1024
 
 
 def receive(socket, message_list, window):
+    # waiting for messages
     while True:
         try:
             msg = socket.recv(BUFFER).decode()
             if not msg:
                 break
+            # if server closes the client has to quit
             if msg == "SHUTDOWN":
                 socket.close()
                 window.quit()
@@ -33,15 +34,11 @@ def send(message, socket, window):
     if msg == "quit":
         socket.close()
         window.quit()
-    
-
 
 
 def close(message, socket, window):
     message.set("quit")
     send(message, socket, window)
-    socket.close()
-    window.quit()
 
 
 def signal_handler(signal, frame, message, socket, window):
@@ -98,10 +95,13 @@ def main():
     try:
         client_socket = socket(AF_INET, SOCK_STREAM)
         client_socket.connect((HOST, PORT))
+        #send a signal if ctrl-c is pressed
         signal.signal(signal.SIGINT, lambda sig, frame: signal_handler(
             sig, frame, message, client_socket, window))
+        #starting the thread to receive the messages
         receive_thread = Thread(
             target=receive, args=(client_socket, message_list, window), daemon=True)
+        #starting the thead that check the connection with the server
         ping_thread = Timer(5.0, ping_ip, args=(
             HOST, PORT, client_socket, window))
         ping_thread.daemon = True

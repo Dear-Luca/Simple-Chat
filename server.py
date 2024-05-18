@@ -36,6 +36,7 @@ def manage_client(connection_socket):
     connection_socket.send("Hi! type your username and then Enter".encode())
 
     user_name = connection_socket.recv(BUFFER).decode()
+    #users can't have the same user_name
     while user_name in users.values():
         ask_username(connection_socket)
         user_name = connection_socket.recv(BUFFER).decode()
@@ -81,6 +82,7 @@ def quit_server(signal, frame):
     global accepting_connections
     print("Exiting server...")
     accepting_connections = False
+    #if server closes connection all clients have to quit
     broadcast("SHUTDOWN")
     server_socket.close()
     sys.exit(0)
