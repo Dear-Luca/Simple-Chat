@@ -1,2 +1,2 @@
 # Chat-UNIBO
-Project Chat for my network programming class 
+Just a simple chat that uses client-server paradigm 
